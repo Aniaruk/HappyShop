@@ -52,6 +52,21 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <!-- HappyShop has a module-info.java (JPMS), but it does not (and should
+                         not) declare "requires org.junit.jupiter.api" since JUnit is a
+                         test-only dependency. Without this, Surefire runs tests on the module
+                         path and fails with IllegalAccessError: module ci553.happyshop does
+                         not read module org.junit.jupiter.api. Setting useModulePath=false
+                         runs tests on the plain classpath instead, sidestepping the module
+                         system entirely for the test phase. -->
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>

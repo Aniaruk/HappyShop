@@ -4,6 +4,14 @@ module ci553.happyshop {
     requires java.sql;
     requires javafx.graphics;
 
+    // Test-only requirement: IntelliJ patches src/test/java's compiled classes into this
+    // same module when running tests (module ci553.happyshop, see --patch-module in the
+    // test run command), so the module needs to explicitly read org.junit.jupiter.api or
+    // JUnit assertions throw IllegalAccessError at runtime. This does not affect the
+    // shipped application, since JUnit stays a test-scope-only Maven dependency and never
+    // ends up on the runtime module path for Launcher/javafx:run.
+    requires org.junit.jupiter.api;
+
     opens ci553.happyshop to javafx.fxml;
     opens ci553.happyshop.client to javafx.fxml;
     opens ci553.happyshop.client.customer;
