@@ -37,8 +37,11 @@ public class CustomerClient extends Application {
         cusModel.databaseRW = databaseRW;
         cusView.start(window);
 
-        //RemoveProductNotifier removeProductNotifier = new RemoveProductNotifier();
-        //removeProductNotifier.cusView = cusView;
-        //cusModel.removeProductNotifier = removeProductNotifier;
+        // Stock Shortage extension: give CustomerModel a RemoveProductNotifier so it can
+        // pop up a message window (rather than just an inline label) when items are
+        // removed from the trolley due to insufficient stock at checkout.
+        RemoveProductNotifier removeProductNotifier = new RemoveProductNotifier();
+        removeProductNotifier.cusView = cusView;
+        cusModel.removeProductNotifier = removeProductNotifier;
     }
 }

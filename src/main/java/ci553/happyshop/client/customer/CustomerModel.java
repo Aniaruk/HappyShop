@@ -16,13 +16,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Organized Trolley extension implemented here: addToTrolley() merges duplicate product
- * IDs and keeps the trolley sorted by product ID.
+ * Organized Trolley + Stock Shortage extensions implemented here.
+ * - addToTrolley() merges duplicate product IDs and keeps the trolley sorted by product ID.
+ * - checkOut() removes any product with insufficient stock from the trolley and notifies
+ *   the customer via RemoveProductNotifier instead of just showing a text message.
  */
 public class CustomerModel {
     public CustomerView cusView;
     public DatabaseRW databaseRW; //Interface type, not specific implementation
                                   //Benefits: Flexibility: Easily change the database implementation.
+    public RemoveProductNotifier removeProductNotifier; // injected by CustomerClient; notifies the
+                                                          // customer when items are removed at checkout
 
     private Product theProduct =null; // product found from search
     private ArrayList<Product> trolley =  new ArrayList<>(); // a list of products in trolley
@@ -124,6 +128,7 @@ public class CustomerModel {
                         ProductListFormatter.buildString(theOrder.getProductList())
                 );
                 System.out.println(displayTaReceipt);
+                closeNotifierIfOpen(); // successful checkout: any earlier shortage notice is no longer relevant
             }
             else{ // Some products have insufficient stock — build an error message to inform the customer
                 StringBuilder errorMsg = new StringBuilder();
@@ -135,13 +140,22 @@ public class CustomerModel {
                 }
                 theProduct=null;
 
-                //TODO
-                // Add the following logic here:
-                // 1. Remove products with insufficient stock from the trolley.
-                // 2. Trigger a message window to notify the customer about the insufficient stock, rather than directly changing displayLaSearchResult.
-                //You can use the provided RemoveProductNotifier class and its showRemovalMsg method for this purpose.
-                //remember close the message window where appropriate (using method closeNotifierWindow() of RemoveProductNotifier class)
-                displayLaSearchResult = "Checkout failed due to insufficient stock for the following products:\n" + errorMsg.toString();
+                // Stock Shortage extension:
+                // 1. Remove the insufficient-stock products from the trolley.
+                // 2. Notify the customer via the RemoveProductNotifier window (rather than
+                //    only the inline search-result label), listing what was removed and
+                //    what they can do next (checkout as-is, re-add up to available stock,
+                //    or cancel).
+                removeInsufficientProducts(insufficientProducts);
+                displayTaTrolley = ProductListFormatter.buildString(trolley);
+
+                if (removeProductNotifier != null) {
+                    removeProductNotifier.showRemovalMsg(errorMsg.toString());
+                } else {
+                    // Fallback so the customer is still informed even if the notifier
+                    // was not wired in (e.g. standalone CustomerClient in tests).
+                    displayLaSearchResult = "Checkout failed due to insufficient stock for the following products:\n" + errorMsg;
+                }
                 System.out.println("stock is not enough");
             }
         }
@@ -172,9 +186,27 @@ public class CustomerModel {
         return new ArrayList<>(grouped.values());
     }
 
+    /**
+     * Removes every product that had insufficient stock from the trolley entirely
+     * (rather than merely capping its quantity), matching the original TODO guidance.
+     * Package-private for direct unit testing.
+     */
+    void removeInsufficientProducts(ArrayList<Product> insufficientProducts) {
+        for (Product insufficient : insufficientProducts) {
+            trolley.removeIf(p -> p.getProductId().equals(insufficient.getProductId()));
+        }
+    }
+
+    private void closeNotifierIfOpen() {
+        if (removeProductNotifier != null) {
+            removeProductNotifier.closeNotifierWindow();
+        }
+    }
+
     void cancel(){
         trolley.clear();
         displayTaTrolley="";
+        closeNotifierIfOpen(); // discard any pending shortage notice when the customer cancels
         updateView();
     }
     void closeReceipt(){
