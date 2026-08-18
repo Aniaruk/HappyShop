@@ -79,4 +79,22 @@ class OrganizedTrolleyTest {
         assertEquals("0003", trolley.get(1).getProductId());
         assertEquals(2, trolley.get(1).getOrderedQuantity());
     }
+
+    @Test
+    void trolleyPreservesMergedQuantityForCheckOut() {
+        // Regression test for a bug found during manual testing: the original checkOut()
+        // called a groupProductsById() step that rebuilt each Product via the 5-arg
+        // constructor, silently resetting orderedQuantity back to its class-default of 1
+        // and hiding real insufficient-stock cases whenever a line's quantity was > 1.
+        // addOrganized() must keep the *same* merged quantity in the trolley (no silent
+        // copy-and-reset), so whatever checkOut() passes to purchaseStocks() reflects the
+        // real requested quantity.
+        model.addOrganized(product("0002"));
+        model.addOrganized(product("0002"));
+
+        ArrayList<Product> trolley = model.getTrolley();
+        assertEquals(1, trolley.size());
+        assertEquals(2, trolley.get(0).getOrderedQuantity(),
+                "merged quantity must still be 2 right before checkout would read it");
+    }
 }

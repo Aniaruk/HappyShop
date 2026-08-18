@@ -12,8 +12,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Organized Trolley + Stock Shortage extensions implemented here.
@@ -107,13 +105,15 @@ public class CustomerModel {
 
     void checkOut() throws IOException, SQLException {
         if(!trolley.isEmpty()){
-            // Group the products in the trolley by productId to optimize stock checking
-            // Check the database for sufficient stock for all products in the trolley.
-            // If any products are insufficient, the update will be rolled back.
-            // If all products are sufficient, the database will be updated, and insufficientProducts will be empty.
-            // Note: If the trolley is already organized (merged and sorted), grouping is unnecessary.
-            ArrayList<Product> groupedTrolley= groupProductsById(trolley);
-            ArrayList<Product> insufficientProducts= databaseRW.purchaseStocks(groupedTrolley);
+            // The trolley is already merged and sorted by product ID (Organized Trolley
+            // extension, via addOrganized()), so no separate grouping step is needed here.
+            // NOTE: the previous groupProductsById() step was removed after manual testing
+            // revealed a bug — it rebuilt each Product via the 5-arg constructor, which
+            // resets orderedQuantity to its class-default of 1, silently discarding the
+            // real merged quantity before the stock check. That masked insufficient-stock
+            // cases whenever a trolley line had quantity > 1. Passing the trolley straight
+            // through avoids the bug entirely instead of just working around it.
+            ArrayList<Product> insufficientProducts= databaseRW.purchaseStocks(trolley);
 
             if(insufficientProducts.isEmpty()){ // If stock is sufficient for all products
                 //get OrderHub and tell it to make a new Order
@@ -164,26 +164,6 @@ public class CustomerModel {
             System.out.println("Your trolley is empty");
         }
         updateView();
-    }
-
-    /**
-     * Groups products by their productId to optimize database queries and updates.
-     * By grouping products, we can check the stock for a given `productId` once, rather than repeatedly
-     */
-    private ArrayList<Product> groupProductsById(ArrayList<Product> proList) {
-        Map<String, Product> grouped = new HashMap<>();
-        for (Product p : proList) {
-            String id = p.getProductId();
-            if (grouped.containsKey(id)) {
-                Product existing = grouped.get(id);
-                existing.setOrderedQuantity(existing.getOrderedQuantity() + p.getOrderedQuantity());
-            } else {
-                // Make a shallow copy to avoid modifying the original
-                grouped.put(id,new Product(p.getProductId(),p.getProductDescription(),
-                        p.getProductImageName(),p.getUnitPrice(),p.getStockQuantity()));
-            }
-        }
-        return new ArrayList<>(grouped.values());
     }
 
     /**
