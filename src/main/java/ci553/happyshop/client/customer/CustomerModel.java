@@ -16,9 +16,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TODO
- * You can either directly modify the CustomerModel class to implement the required tasks,
- * or create a subclass of CustomerModel and override specific methods where appropriate.
+ * Organized Trolley extension implemented here: addToTrolley() merges duplicate product
+ * IDs and keeps the trolley sorted by product ID.
  */
 public class CustomerModel {
     public CustomerView cusView;
@@ -64,13 +63,9 @@ public class CustomerModel {
 
     void addToTrolley(){
         if(theProduct!= null){
-
-            // trolley.add(theProduct) — Product is appended to the end of the trolley.
-            // To keep the trolley organized, add code here or call a method that:
-            //TODO
-            // 1. Merges items with the same product ID (combining their quantities).
-            // 2. Sorts the products in the trolley by product ID.
-            trolley.add(theProduct);
+            // Organized Trolley extension: merge duplicate product IDs and keep the
+            // trolley sorted by product ID (ascending), instead of just appending.
+            addOrganized(theProduct);
             displayTaTrolley = ProductListFormatter.buildString(trolley); //build a String for trolley so that we can show it
         }
         else{
@@ -79,6 +74,31 @@ public class CustomerModel {
         }
         displayTaReceipt=""; // Clear receipt to switch back to trolleyPage (receipt shows only when not empty)
         updateView();
+    }
+
+    /**
+     * Adds a product to the trolley in an "organized" way:
+     * 1. Merging Duplicate Items — if a product with the same productId is already in the
+     *    trolley, its orderedQuantity is increased instead of adding a second line. This
+     *    still applies even if other, different products were added in between.
+     * 2. Sorting Items by Product ID — the trolley is always kept in ascending productId
+     *    order, so newly merged/inserted items appear in the right place.
+     *
+     * Package-private (not private) so it can be exercised directly by unit tests without
+     * needing a JavaFX view/search step.
+     *
+     * @param product the product (with orderedQuantity already set, default 1) to add
+     */
+    void addOrganized(Product product) {
+        for (Product existing : trolley) {
+            if (existing.getProductId().equals(product.getProductId())) {
+                existing.setOrderedQuantity(existing.getOrderedQuantity() + product.getOrderedQuantity());
+                return; // trolley order is unaffected by a quantity-only change
+            }
+        }
+        // New product ID: insert then re-sort using Product's natural ordering (by productId).
+        trolley.add(product);
+        trolley.sort(Product::compareTo);
     }
 
     void checkOut() throws IOException, SQLException {
